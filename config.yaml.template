@@ -1,0 +1,19 @@
+# ViewSense Edge Worker - config.yaml Template
+# Copie para config.yaml e preencha os valores reais (nunca commite o config.yaml)
+viewsense:
+  api_url: "https://SEU_PROJETO.supabase.co/functions/v1/ingest-detections"
+  heartbeat_url: "https://SEU_PROJETO.supabase.co/functions/v1/server-heartbeat"
+  roi_sync_url: "https://SEU_PROJETO.supabase.co/functions/v1/roi-sync"
+  api_key: ""
+  anon_key: ""
+  send_interval_seconds: 10
+  batch_size: 20
+  heartbeat_interval_seconds: 60
+  roi_sync_interval_seconds: 120
+  config_sync_interval_seconds: 120
+  server_secret: ""
+  server_name: "Meu Servidor"
+  server_id: ""
+  device_type: "ubuntu_server"
+  github_token: ""
+cameras: []

@@ -1,0 +1,21 @@
+# Configuração real (contém segredos)
+config.yaml
+
+# Modelos YOLO (binários grandes)
+*.pt
+*.onnx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Logs e runtime
+*.log
+active_streams.json
+.installed_commit
+
+# macOS
+.DS_Store
