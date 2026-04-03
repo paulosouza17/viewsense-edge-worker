@@ -140,6 +140,18 @@ sudo -H -u $USER_NAME bash -c "pm2 save"
 # Setup PM2 Startup script automatically
 env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $USER_NAME --hp /home/$USER_NAME
 
+# ── Auto-Update Cron (roda toda madrugada às 03:00) ─────────────────────────
+echo -e "${GREEN}[8/8] Registrando cron de atualização automática às 03:00...${NC}"
+
+AUTO_UPDATE_SCRIPT="$APP_DIR/auto_update.sh"
+sudo -u $USER_NAME bash -c "chmod +x \"$AUTO_UPDATE_SCRIPT\" 2>/dev/null || true"
+
+CRON_LINE="0 3 * * * WORKER_DIR=\"$APP_DIR\" bash \"$AUTO_UPDATE_SCRIPT\" >> \"$APP_DIR/update.log\" 2>&1"
+( sudo -u $USER_NAME crontab -l 2>/dev/null | grep -v "auto_update.sh" ; echo "$CRON_LINE" ) | sudo -u $USER_NAME crontab -
+
+echo -e "✅ Cron registrado: todo dia às 03:00"
+# ─────────────────────────────────────────────────────────────────────────────
+
 SERVER_IP=$(hostname -I | awk '{print $1}')
 echo -e "${GREEN}====================================================${NC}"
 echo -e "${GREEN}ViewSense Edge Worker successfully installed & armed!${NC}"
@@ -152,4 +164,5 @@ echo "HLS  endpoint:   http://${SERVER_IP}:8001/live/{stream-key}/index.m3u8"
 echo ""
 echo "Logs:    pm2 logs"
 echo "Restart: pm2 restart all"
+echo "Update:  Auto-update ativo (03:00). Manual: bash auto_update.sh"
 echo "===================================================="

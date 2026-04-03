@@ -88,8 +88,21 @@ pm2 save
 echo "To ensure PM2 launches on macOS reboot, run the following command manually:"
 pm2 startup
 
+# ── Auto-Update Cron (roda toda madrugada às 03:00) ─────────────────────────
+echo -e "${GREEN}[Extra] Registrando cron de atualização automática às 03:00...${NC}"
+
+AUTO_UPDATE_SCRIPT="$APP_DIR/auto_update.sh"
+chmod +x "$AUTO_UPDATE_SCRIPT" 2>/dev/null || true
+
+CRON_LINE="0 3 * * * WORKER_DIR=\"$APP_DIR\" bash \"$AUTO_UPDATE_SCRIPT\" >> \"$APP_DIR/update.log\" 2>&1"
+( crontab -l 2>/dev/null | grep -v "auto_update.sh" ; echo "$CRON_LINE" ) | crontab -
+
+echo "✅ Cron registrado: todo dia às 03:00"
+# ─────────────────────────────────────────────────────────────────────────────
+
 echo -e "${GREEN}====================================================${NC}"
 echo -e "${GREEN}ViewSense Edge Worker successfully installed & armed!${NC}"
 echo "You can view logs actively by running: pm2 logs"
 echo "To restart the worker: pm2 restart all"
+echo "Update: Auto-update ativo (03:00). Manual: bash auto_update.sh"
 echo "===================================================="
