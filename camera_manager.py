@@ -22,6 +22,11 @@ class CameraManager:
         self.roi_manager = None
         self.config_sync = None
         self.api_client_loop = None
+        # Watchdog: {cam_id: (last_frame_count, timestamp_of_last_change)}
+        self._watchdog_state: Dict[str, tuple] = {}
+        self._watchdog_task = None
+        self.WATCHDOG_INTERVAL = 60   # segundos entre verificações
+        self.WATCHDOG_TIMEOUT  = 90   # segundos sem novo frame = câmera travada
 
     def _load_config(self):
         with open(self.config_path, 'r') as f:
@@ -49,6 +54,9 @@ class CameraManager:
         self.config_sync = ConfigSync(self.config, self.api_client.client)
         self.config_sync.on_diff(self._apply_camera_diff)
         asyncio.create_task(self.config_sync.loop(self._get_current_state))
+
+        # Start frame watchdog
+        self._watchdog_task = asyncio.create_task(self._watchdog_loop())
 
     def on_roi_updated(self, camera_id: str, rois: list, camera_config: dict):
         if camera_id in self.cameras:
@@ -137,6 +145,48 @@ class CameraManager:
         if self.api_client:
             self.api_client.active_cameras = len(self.cameras)
 
+    # ---------- Frame Watchdog ----------
+
+    async def _watchdog_loop(self):
+        """Verifica periodicamente se alguma câmera está travada (sem novos frames)."""
+        import time
+        logger.info(f"🐕 Watchdog iniciado (checa a cada {self.WATCHDOG_INTERVAL}s, timeout={self.WATCHDOG_TIMEOUT}s)")
+        await asyncio.sleep(30)  # aguarda inicialização
+
+        while True:
+            await asyncio.sleep(self.WATCHDOG_INTERVAL)
+            now = time.time()
+
+            for cam_id, detector in list(self.cameras.items()):
+                current_frames = detector.frame_count
+
+                if cam_id not in self._watchdog_state:
+                    self._watchdog_state[cam_id] = (current_frames, now)
+                    continue
+
+                last_frames, last_change_time = self._watchdog_state[cam_id]
+
+                if current_frames > last_frames:
+                    # câmera ativa — atualiza registro
+                    self._watchdog_state[cam_id] = (current_frames, now)
+                else:
+                    # frames parados — verifica timeout
+                    elapsed = now - last_change_time
+                    if elapsed >= self.WATCHDOG_TIMEOUT:
+                        logger.warning(
+                            f"🐕⚠️  Watchdog: câmera '{detector.config.get('name', cam_id)}' "
+                            f"travada há {elapsed:.0f}s (frames={current_frames}). Reiniciando..."
+                        )
+                        cam_conf = next(
+                            (c for c in self.config['cameras'] if c['id'] == cam_id), None
+                        )
+                        if cam_conf:
+                            self.stop_camera(cam_id)
+                            await asyncio.sleep(2)
+                            self._start_camera(cam_conf)
+                            self._watchdog_state[cam_id] = (0, time.time())
+                            logger.info(f"🐕✅  Watchdog: câmera '{cam_conf.get('name', cam_id)}' reiniciada.")
+
     async def force_sync(self) -> Dict[str, Any]:
         """Trigger an immediate config sync (called from API endpoint)."""
         if not self.config_sync:
@@ -184,6 +234,8 @@ class CameraManager:
             logger.warning(f"Unknown command: {command}")
 
     async def shutdown(self):
+        if self._watchdog_task:
+            self._watchdog_task.cancel()
         if self.config_sync:
             self.config_sync.stop()
         for cam_id in list(self.cameras.keys()):
