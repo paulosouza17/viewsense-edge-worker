@@ -75,9 +75,9 @@ class CameraDetector(threading.Thread):
         fps = self.config.get('fps', 5)
         self.tracker = sv.ByteTrack(
             frame_rate=fps,
-            track_thresh=0.03,  # Force ultra-low tracker rejection
-            match_thresh=0.95,  # 95% distance allowed (5% overlap) for teleportation gaps
-            track_buffer=150
+            track_activation_threshold=0.03,  # Force ultra-low tracker rejection
+            minimum_matching_threshold=0.95,  # 95% distance allowed (5% overlap) for teleportation gaps
+            lost_track_buffer=150
         )
 
         # Line Crossing
@@ -273,8 +273,8 @@ class CameraDetector(threading.Thread):
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 self.tracker = sv.ByteTrack(
                     frame_rate=target_fps,
-                    track_thresh=0.10,
-                    match_thresh=0.9
+                    track_activation_threshold=0.10,
+                    minimum_matching_threshold=0.9
                 )
                 self.crossing_detector = LineCrossingDetector()
                 ret, frame = cap.read()
